@@ -3,19 +3,23 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+  res.render('index', { title: 'Noisy Sandbox' });
 });
 
-router.get("/worley", function(req, res, next) {
-  res.render("worley", { title: "Express" })
+router.get("/terrain", function(req, res, next) {
+  res.render("terrain", { title: "Terrain Playground" })
 })
 
-router.get("/polygon", function(req, res, next) {
-  res.render("polygon", { title: "Express" })
+router.get("/cell", function(req, res, next) {
+  res.render("cell", { title: "Cell Playground" })
 })
 
-router.get("/three", function(req, res, next) {
-  res.render("threedee", { title: "Express" })
-})
+// router.get("/polygon", function(req, res, next) {
+//   res.render("polygon", { title: "Express" })
+// })
+
+// router.get("/three", function(req, res, next) {
+//   res.render("threedee", { title: "Express" })
+// })
 
 module.exports = router;
