@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Perlin noise</title>
+	</head>
+	<style>
+
+        #content {
+            display: grid;
+            grid-template-columns: auto auto;
+            grid-template-rows: auto;
+        }
+    
+      .mainCanvas {
+        /* position: absolute; */
+        /* top: -50%; left: -50%; */
+        /* transform: translate(-50%, 0%); */
+        display: block;
+        border: 1px solid black;
+      }
+
+
+        .control-panel {
+            align-items: flex-start;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-button {
+            width: fit-content;
+        }
+
+        .setting {
+            display: grid;
+            max-width: 20vw;
+            grid-template-columns: 5fr 4fr 1fr;
+            margin: 0.5vw;
+        }
+
+        .setting > label {
+            width: fit-content;
+            align-self: center;
+            font-size: 1.5em
+        }
+
+        .setting > input, select {
+            width: 90%;
+            align-self: center;
+            margin-left: 0.25vw;
+        }
+
+        .setting > div {
+            align-self: center;
+        }
+
+	</style>
+	<body>
+        <canvas id="polygons" width="500" height="500"></canvas>
+
+    </body>
+    <script type="module" src="./javascripts/polygonMap/polygonGen.js">
+    </script>
+
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Perlin noise</title>
+	</head>
+	<style>
+
+        #content {
+            display: grid;
+            grid-template-columns: auto auto;
+            grid-template-rows: auto;
+        }
+    
+      .mainCanvas {
+        /* position: absolute; */
+        /* top: -50%; left: -50%; */
+        /* transform: translate(-50%, 0%); */
+        display: block;
+        border: 1px solid black;
+      }
+
+
+        .control-panel {
+            align-items: flex-start;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-button {
+            width: fit-content;
+        }
+
+        .setting {
+            display: grid;
+            max-width: 20vw;
+            grid-template-columns: 5fr 4fr 1fr;
+            margin: 0.5vw;
+        }
+
+        .setting > label {
+            width: fit-content;
+            align-self: center;
+            font-size: 1.5em
+        }
+
+        .setting > input, select {
+            width: 90%;
+            align-self: center;
+            margin-left: 0.25vw;
+        }
+
+        .setting > div {
+            align-self: center;
+        }
+
+	</style>
+	<body>
+        <div id="content">
+            <div id="controls" class="control-panel">
+                <h2> General Settings </h2>
+                <!-- <button onclick="drawNoise()"> Draw </button>             -->
+                <div class="control-button">
+                    <button id="reseedButton"> Reseed </button>
+                </div>
+                
+                <div class="setting">
+                  <label> Noise Generator </label>
+                  <select id="generatorSelect"> 
+                      <option value="perlin"> Perlin Noise </option>
+                      <option value="simplex"> Simplex Noise </option>
+                      <option value="worley"> Worley Noise </option>
+                  </select>
+              </div>
+
+                <div class="setting">
+                    <label> Frequency Start</label>
+                    <input type="range" id="freqSlider" min="1" max="500" value="50">
+                    <div id="freqValue"> </div>
+                </div>
+                
+                <div class="setting">
+                    <label> Octave Count</label>
+                    <input type="range" id="octaveSlider" min="1" max="8" value="1">
+                    <div id="octaveValue"> </div>
+                </div>
+                
+                <div class="setting">
+                    <label> Threshold Step</label>
+                    <input type="range" id="thresholdSlider" min="1" max="100" value="1">
+                    <div id="thresholdValue"> </div>
+                </div>
+
+                <div class="setting">
+                    <label> Visual Mode </label>
+                    <select id="visualSelect"> 
+                        <option value="2"> 2D </option>
+                        <option value="3"> 3D </option>
+                    </select>
+                </div>
+
+                <h2> 3D settings </h2>
+
+                <div class="setting">
+                  <label> Height Offset (3D Only) </label>
+                  <input type="range" id="heightSlider" min="0" max="255" value="50">
+                  <div id="heightValue"> </div>
+                </div>
+
+                <div class="setting">
+                    <label> Smooth 3D </label>
+                    <input type="checkbox" id="smoothCheckbox">
+                </div>
+
+                
+                <div class="setting">
+                  <label> Amplification (Only works if smoothed) </label>
+                  <input type="range" id="ampSlider" min="1" max="100" value="1">
+                  <div id="ampValue"> </div>
+                </div>
+
+            </div>
+
+            <div id="map">
+                <canvas class="mainCanvas" id="map-2d" width="500" height="500"></canvas>
+                <div id="map-3d" style="display:none; width: 500; height: 500;"></div>
+                <canvas id="tempCanvas"  style="display:none;" width="50" height="50"></canvas>
+                <canvas id="moistureCanvas" style="display:none;" width="50" height="50"></canvas>
+            </div>
+
+            <div id="texture">
+              <div id="textureControls" class="control-panel"> 
+                <h2> Texture Controls </h2>
+                
+                <div class="setting">
+                  <label> Texture Mode </label>
+                    <select id="textureMode"> 
+                        <option value="grey"> Greyscale </option>
+                        <option value="atlas"> Pseudo Realistic </option>
+                        <option value="simulate"> Simulated </option>
+                        <option value="custom"> Custom</option>
+                    </select>
+                </div>
+
+                <div>
+                  <h3> Palette </h3>
+                  <div id="palette">
+
+                  </div>
+                </div>plr
+
+              </div>
+            </div>
+        </div>
+        <script
+            async
+            src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"
+        ></script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "./build/three.module.js"
+                }
+            }
+        </script>
+        <script type="module" src="./javascripts/noise.js"></script>
+    </body>
+</html>
