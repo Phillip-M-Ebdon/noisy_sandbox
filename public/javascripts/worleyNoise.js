@@ -1,3 +1,25 @@
+import { percentBetween } from "./helpers/percentBetween.js"
+import { mapValue } from "./helpers/mapValue.js"
+
+const rowSlider = document.getElementById("rowSlider");
+const textureMode = document.getElementById("textureMode")
+const cellRadius = document.getElementById("cellRadius")
+
+const BIOME_COLOURS = {
+    snow: "rgb(255, 255, 255)",
+    borealForest: "rgb(14, 56, 46)",
+    forest: "rgb(0, 51, 20)",
+    rainForest: "rgb(34, 140, 34)",
+    tropicalForest: "rgb(125, 186, 7)",
+    grassland: "rgb(198, 204, 81)",
+    savanna: "rgb(251, 208, 116)",
+    desert: "rgb(222, 189, 149)",
+    mountain: "rgb(168, 171, 180)",
+    waterShallow: "rgb(80, 127, 169)",
+    waterDeep: "rgb(10, 70, 107)",
+};
+
+
 export default class WorleyGenerator2D {
 
     constructor(width, height, cellRows, cellColumns) {
@@ -41,10 +63,6 @@ export default class WorleyGenerator2D {
                 let min = null;
                 let max = null;
 
-                if (x > 300 && y > 100) {
-                    console.log(x, y)
-                }
-
                 // find cell centered around
                 let cellRow = Math.floor(x / this.cellWidth)
                 let cellColumn = Math.floor(y / this.cellHeight)                 
@@ -66,7 +84,7 @@ export default class WorleyGenerator2D {
                         max = max == null || max <= dist ? dist : max;
                     }
                 }
-                this.grid[x][y] = min * Math.sqrt(this.cellRows * 10)
+                this.grid[x][y] = min * Math.sqrt(this.cellRows * cellRadius.value)
             }
         }
     }
@@ -90,29 +108,55 @@ export default class WorleyGenerator2D {
 
 }
 
-const rowSlider = document.getElementById("rowSlider");
 
-let generator = new WorleyGenerator2D(100, 100, rowSlider.value, rowSlider.value);
+function generatorBuilder() {
+    return new WorleyGenerator2D(500, 500, rowSlider.value, rowSlider.value)
+}
 
-const BIOME_COLOURS = {
-    snow: "rgb(255, 255, 255)",
-    borealForest: "rgb(14, 56, 46)",
-    forest: "rgb(0, 51, 20)",
-    rainForest: "rgb(34, 140, 34)",
-    tropicalForest: "rgb(125, 186, 7)",
-    grassland: "rgb(198, 204, 81)",
-    savanna: "rgb(251, 208, 116)",
-    desert: "rgb(222, 189, 149)",
-    mountain: "rgb(168, 171, 180)",
-    waterShallow: "rgb(80, 127, 169)",
-    waterDeep: "rgb(10, 70, 107)",
-};
+let generator = generatorBuilder();
+
+
+function generateTemperatureGrid(heightGrid) {
+    let tempGenerator = generatorBuilder();
+    tempGenerator.reseed()
+    tempGenerator.calculateGrid()
+    let temperatures = [];
+    for(let x = 0; x < heightGrid.length; x++) {
+        temperatures.push([])
+        for (let y = 0; y < heightGrid[x].length; y++){
+            const altitude = heightGrid[y][x];
+            const maxTemp = 40 - 10 * percentBetween(altitude, 0, 255); // yeah this sucks, should be using constants or variables. whoops.
+            let total = tempGenerator.grid[x][y]
+            total = mapValue(total, [0, 255], [-10, maxTemp]);
+            temperatures[x].push(total)
+        }
+    }
+    return temperatures;
+}
+
+function generateMoistureGrid(tempGrid) {
+    let moiGenerator = generatorBuilder()
+    moiGenerator.reseed()
+    moiGenerator.calculateGrid()
+    let moistures = [];
+    for(let x = 0; x < tempGrid.length; x++) {
+        moistures.push([])
+        for (let y = 0; y < tempGrid[x].length; y++){
+            const temp = tempGrid[y][x];
+            let total = moiGenerator.grid[x][y]
+            const maxMoisture = percentBetween(temp, -10, 40) * 100;
+            const moisture = mapValue(total, [0, 255], [0, maxMoisture]);
+            moistures[x].push(moisture);
+        }
+    }
+    return moistures
+}
 
 function simulateBiomes(heightGrid) {
     const width = heightGrid[0].length;
     const height = heightGrid.length;
-    let tempGrid = generateTemperatureGrid(width, height, heightGrid);
-    let moiGrid = generateMoistureGrid(width, height, tempGrid);
+    let tempGrid = generateTemperatureGrid(heightGrid);
+    let moiGrid = generateMoistureGrid(tempGrid);
 
     console.log(Math.min);
 
@@ -169,6 +213,7 @@ function simulateBiomes(heightGrid) {
                     else biome = "tropicalForest";
                 }
             }
+            // rgbMap[y].push(`rgb(${alt},${temp},${moi})`)
             rgbMap[y].push(BIOME_COLOURS[biome]);
         }
     }
@@ -274,8 +319,8 @@ function draw2D() {
     // let freqSlider = document.getElementById("freqSlider").value;
     // let colSlider = document.getElementById("colSlider").value;
     let rgbMap = heightToRGB(generator.grid);
-    for (let y = 0; y < 500; y++) {
-        for (let x = 0; x < 500; x++) {
+    for (let y = 0; y < generator.grid.length; y++) {
+        for (let x = 0; x < generator.grid[y].length; x++) {
             canvas.fillStyle = rgbMap[y][x];
             canvas.fillRect(x, y, 1, 1);
         }
@@ -285,20 +330,34 @@ function draw2D() {
 const reseedButton = document.getElementById("reseedButton");
 
 reseedButton.onclick = function () {
+    generator = generatorBuilder();
     generator.reseed();
     draw2D();
 }
 
 rowSlider.onchange = function () {
-    generator = new WorleyGenerator2D(100, 100, rowSlider.value, rowSlider.value)
-    draw2D();
+    generator = generatorBuilder();
+    generator.reseed();
     document.getElementById("rowValue").innerText = rowSlider.value;
+    draw2D();
 };
 
-
-setInterval(() => {
-    generator.animate();
+cellRadius.onchange = function () {
+    document.getElementById("cellRadiusValue").innerText = cellRadius.value;
+    generator.calculateGrid();
     draw2D();
-    },
-    75
-)
+};
+
+textureMode.onchange = function () {
+    generator.calculateGrid();
+    draw2D();
+}
+
+draw2D();
+
+// setInterval(() => {
+//     generator.animate();
+//     draw2D();
+//     },
+//     75
+// )
