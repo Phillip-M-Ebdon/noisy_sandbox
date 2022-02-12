@@ -4,6 +4,9 @@ import { OrbitControls } from '../jsm/controls/OrbitControls.js'
 import { PerlinGenerator2D } from "./perlinNoise.js";
 import { SimplexGenerator } from "./simplexNoise.js";
 
+import { mapValue } from "./helpers/mapValue.js"
+import { percentBetween } from "./helpers/percentBetween.js"
+
 // 2d generators
 let generators2D = {
     "perlin": {
@@ -50,38 +53,52 @@ function drawNoise() {
     }
 }
 
-/**
- * Find the value between 0 and 1, that represents it as a percentage of closeness to the upper from lower
- * where 0 means value <= lower, and 1 means value = upper, hence value > 1 means value > upper.
- * @param {*} value , value to convert to percentage
- * @param {*} lower , the lowest bound of percentage
- * @param {*} upper , the upper bound for 100%
- * @returns float between 0 and 1
- */
-function percentBetween(value, lower, upper) {
-    let shifted = value - lower;
-    if (shifted <= 0) {
-        return 0;
+// /**
+//  * Find the value between 0 and 1, that represents it as a percentage of closeness to the upper from lower
+//  * where 0 means value <= lower, and 1 means value = upper, hence value > 1 means value > upper.
+//  * @param {*} value , value to convert to percentage
+//  * @param {*} lower , the lowest bound of percentage
+//  * @param {*} upper , the upper bound for 100%
+//  * @returns float between 0 and 1
+//  */
+// function percentBetween(value, lower, upper) {
+//     let shifted = value - lower;
+//     if (shifted <= 0) {
+//         return 0;
+//     }
+
+//     return shifted / upper;
+// }
+
+function generateGrid(width, height, generator) {
+    let values = [];
+    for (let y = 0; y < width; y++) {
+        values.push([]);
+        for (let x = 0; x < height; x++) {
+            let f = parseInt(freqSlider.value) / 10000.0;
+
+            let total = 0.0;
+            let a = 1;
+            let octaveCount = parseInt(octaveSlider.value);
+            let finalMultiplier = 0.0;
+            for (let octave = 0; octave < octaveCount; octave++) {
+                let value = a * generator.getNoise2D(x * f, y * f);
+                finalMultiplier += a;
+                total += value;
+                a *= 0.5;
+                f *= 2;
+            }
+
+            total *= 1 / finalMultiplier;
+
+            let step = parseInt(thresholdSlider.value);
+            let rgb = Math.round(total * 255);
+            // console.log(rgb, rgb % step, rgb - rgb % step)
+            rgb -= rgb % step;
+            values[y].push(rgb);
+        }
     }
-
-    return shifted / upper;
-}
-
-/**
- * Convert a value given its own bounds, into the value it would be if it had the new bounds
- * @param {*} value value to convert
- * @param {*} valuesBounds bounds of the supplied value
- * @param {*} newBounds bounds to fit the value between
- */
-function mapValue(value, valuesBounds, newBounds) {
-    const valuePercentage = percentBetween(
-        value,
-        valuesBounds[0],
-        valuesBounds[1]
-    );
-    const newValue =
-        (newBounds[1] - newBounds[0]) * valuePercentage + newBounds[0];
-    return newValue;
+    return values;
 }
 
 /**
@@ -346,6 +363,24 @@ function generateAtlasMap(heightGrid) {
     return rgbMap;
 }
 
+function kaleidoscopeMap(heightGrid) {
+    let generatorType = generatorSelect.value;
+    const redMap = heightGrid;
+    generators2D[generatorType]["temp"].reseed()
+    generators2D[generatorType]["moi"].reseed()
+    let greenMap = generateGrid(500, 500, generators2D[generatorType]["temp"])
+    let blueMap = generateGrid(500, 500, generators2D[generatorType]["moi"])
+
+    let rgbMap = [];
+    for (let y = 0; y < heightGrid.length; y++) {
+        rgbMap.push([]);
+        for (let x = 0; x < heightGrid[y].length; x++) {
+            rgbMap[y].push(`rgb(${Math.round(redMap[y][x])},${Math.round(greenMap[y][x])},${Math.round(blueMap[y][x])})`)
+        }
+    }
+    return rgbMap;
+}
+
 /**
  * Return the appropriate grid of RGB values to be interpreted as a texture
  * @param {*} heightGrid
@@ -358,12 +393,13 @@ function heightToRGB(heightGrid) {
         case "atlas":
             // some arbitrary colours in a switch to emulate an Atlas or world map
             return generateAtlasMap(heightGrid);
-            break;
 
         case "simulate":
             // whack
             return simulateBiomes(heightGrid);
-            break;
+
+        case "kaleidoscope":
+            return kaleidoscopeMap(heightGrid);
 
         default:
             // output greyscale
