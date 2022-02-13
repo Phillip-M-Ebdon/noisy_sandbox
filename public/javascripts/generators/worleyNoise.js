@@ -1,5 +1,5 @@
-import { percentBetween } from "./helpers/percentBetween.js"
-import { mapValue } from "./helpers/mapValue.js"
+import { percentBetween } from "../helpers/percentBetween.js"
+import { mapValue } from "../helpers/mapValue.js"
 
 const rowSlider = document.getElementById("rowSlider");
 const textureMode = document.getElementById("textureMode")

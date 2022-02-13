@@ -1,3 +1,5 @@
+import { Permutation } from "./Permutation.js";
+
 const vectors2D = [
     [-1.0, -1.0],
     [-1.0, 1.0],
@@ -24,38 +26,7 @@ const vectors3D = [
     [0, -1.0, -1.0],
 ];
 
-// permutations ranges from 0 to 255, twice for wrapping
-class Permutation {
-    constructor() {
-        this.permutations = [];
-        for (let i = 0; i < 256; i++) {
-            this.permutations.push(i);
-            this.permutations.push(i);
-        }
-        this.shuffle();
-    }
 
-    shuffle() {
-        for (let i = 0; i < 512; i++) {
-            let newIndex = Math.floor(Math.random() * 512);
-            let saved = this.permutations[i];
-            this.permutations[i] = this.permutations[newIndex];
-            this.permutations[newIndex] = saved;
-        }
-    }
-
-    get(i) {
-        return this.permutations[i];
-    }
-
-    get2(x, y) {
-        return this.permutations[this.permutations[x] + y];
-    }
-
-    get3(x, y, z) {
-        return this.permutations[this.permutations[this.permutations[x] + y] + z]; 
-    }
-}
 
 const F2 = (Math.sqrt(3) - 1.0) / 2.0;
 const G2 = (3 - Math.sqrt(3)) / 6;

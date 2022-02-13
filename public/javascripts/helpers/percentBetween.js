@@ -12,5 +12,5 @@
         return 0;
     }
 
-    return shifted / upper;
+    return shifted / (upper - lower);
 }

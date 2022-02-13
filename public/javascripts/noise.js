@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from '../jsm/controls/OrbitControls.js'
 
-import { PerlinGenerator2D } from "./perlinNoise.js";
-import { SimplexGenerator } from "./simplexNoise.js";
+import { PerlinGenerator2D } from "./generators/perlinNoise.js";
+import { SimplexGenerator } from "./generators/simplexNoise.js";
 
 import { mapValue } from "./helpers/mapValue.js"
 import { percentBetween } from "./helpers/percentBetween.js"
@@ -70,31 +70,39 @@ function drawNoise() {
 //     return shifted / upper;
 // }
 
-function generateGrid(width, height, generator) {
+function generateNoise(generator, x, y, bounds) {
+    let f = parseInt(freqSlider.value) / 10000.0;
+
+    let total = 0.0;
+    let a = 1;
+    let octaveCount = parseInt(octaveSlider.value);
+    let finalMultiplier = 0.0;
+    for (let octave = 0; octave < octaveCount; octave++) {
+        let value = a * generator.getNoise2D(x * f, y * f);
+        finalMultiplier += a;
+        total += value;
+        a *= 0.5;
+        f *= 2;
+    }
+
+    total *= 1 / finalMultiplier;
+    // total = (2 ** (total ** 3)) - 1
+    // total = (Math.sin(Math.PI * total + 3*Math.PI/2)+1)/2
+    // total = (total -1)**3 + 1
+    let step = parseInt(thresholdSlider.value);
+    let rgb = Math.round(mapValue(total, [0, 1], bounds));
+    // console.log(rgb, rgb % step, rgb - rgb % step)
+    rgb -= rgb % step;
+
+    return rgb
+}
+
+function generateGrid(width, height, generator, bounds) {
     let values = [];
     for (let y = 0; y < width; y++) {
         values.push([]);
         for (let x = 0; x < height; x++) {
-            let f = parseInt(freqSlider.value) / 10000.0;
-
-            let total = 0.0;
-            let a = 1;
-            let octaveCount = parseInt(octaveSlider.value);
-            let finalMultiplier = 0.0;
-            for (let octave = 0; octave < octaveCount; octave++) {
-                let value = a * generator.getNoise2D(x * f, y * f);
-                finalMultiplier += a;
-                total += value;
-                a *= 0.5;
-                f *= 2;
-            }
-
-            total *= 1 / finalMultiplier;
-
-            let step = parseInt(thresholdSlider.value);
-            let rgb = Math.round(total * 255);
-            // console.log(rgb, rgb % step, rgb - rgb % step)
-            rgb -= rgb % step;
+            let rgb = generateNoise(generator, x, y, bounds)
             values[y].push(rgb);
         }
     }
@@ -102,128 +110,160 @@ function generateGrid(width, height, generator) {
 }
 
 /**
- * Uses the height2Dgen object to generate a grid of noise give a width and height
- * @param {*} width number of rows
- * @param {*} height number of columns
- * @returns a grid of values representing noise, values bounded to 0 and 255
+ * generate a grid dependent on another grids values, provided the bounds of the dependent and the influencing grids.
+ * assumes the dependent width and height will match that of influencing grid
+ * @param {*} generator noise generator that can provide a noise value for an X,Y coordindate
+ * @param {*} bounds bounds for value in the dependent grid in form [lower, upper]
+ * @param {*} lowestUpper the lowest value the upper bound can be shifted to
+ * @param {*} influencer values this new grid is dependent on
+ * @param {*} infBounds bounds of the influencer
+ * @returns {number[][]} dependent grid of same size as influencer
  */
-function generateHeightGrid(width, height) {
-    let heights = [];
-    let generatorType = generatorSelect.value;
+function generateDependentGrid(generator, bounds, lowestUpper, influencer, infBounds) {
+    const width = influencer.length
+    const height = influencer[0].length
+
+    let dependent = [];
     for (let y = 0; y < width; y++) {
-        heights.push([]);
+        dependent.push([]);
         for (let x = 0; x < height; x++) {
-            let f = parseInt(freqSlider.value) / 10000.0;
 
-            let total = 0.0;
-            let a = 1;
-            let octaveCount = parseInt(octaveSlider.value);
-            let finalMultiplier = 0.0;
-            for (let octave = 0; octave < octaveCount; octave++) {
-                let value = a * generators2D[generatorType]["height"].getNoise2D(x * f, y * f);
-                finalMultiplier += a;
-                total += value;
-                a *= 0.5;
-                f *= 2;
-            }
-
-            total *= 1 / finalMultiplier;
-
-            let step = parseInt(thresholdSlider.value);
-            let rgb = Math.round(total * 255);
-            // console.log(rgb, rgb % step, rgb - rgb % step)
-            rgb -= rgb % step;
-            heights[y].push(rgb);
+            const lower = bounds[0];
+            const upperBase = bounds[1];
+            // this will Math Error if infBounds are identical
+            const upper = upperBase - (upperBase - lowestUpper) * percentBetween(influencer[y][x], infBounds[0], infBounds[1])
+            // let value = lower + percentBetween(generateNoise(generator, x, y), 0, 255) * (upper - lower);
+            const value = mapValue(generateNoise(generator, x, y, [0, 255]), [0, 255], [lower, upper])
+            dependent[y].push(value);
         }
     }
-    return heights;
+
+    return dependent;
 }
 
-/**
- * generates a temperature map for a give altitude map, using noise values which are then bounded between -10 and a max of 40
- * the max temperature is inversely proporitional to temp, with the max height of 255 being -10 to -10
- * @param {*} width number of rows
- * @param {*} height number of columns
- * @param {*} heightGrid grid of equal width and height containing altitudes ranging from 0 and 255
- * @re
- */
-function generateTemperatureGrid(width, height, heightGrid) {
-    let temperatures = [];
-    let generatorType = generatorSelect.value;
+// /**
+//  * Uses the height2Dgen object to generate a grid of noise give a width and height
+//  * @param {*} width number of rows
+//  * @param {*} height number of columns
+//  * @returns a grid of values representing noise, values bounded to 0 and 255
+//  */
+// function generateHeightGrid(width, height) {
+//     let heights = [];
+//     let generatorType = generatorSelect.value;
+//     for (let y = 0; y < width; y++) {
+//         heights.push([]);
+//         for (let x = 0; x < height; x++) {
+//             let f = parseInt(freqSlider.value) / 10000.0;
 
-    for (let y = 0; y < width; y++) {
-        temperatures.push([]);
-        for (let x = 0; x < height; x++) {
-            // want temperatures smooth, no octaves
-            // but what if octaves?
-            let total = 0.0;
-            let a = 1;
-            let octaveCount = parseInt(octaveSlider.value);
-            let finalMultiplier = 0.0;
-            let f = parseInt(freqSlider.value) / 100000.0;
-            for (let octave = 0; octave < octaveCount; octave++) {
-                let value = a * generators2D[generatorType]["temp"].getNoise2D(x * f, y * f);
-                finalMultiplier += a;
-                total += value;
-                a *= 0.5;
-                f *= 2;
-            }
+//             let total = 0.0;
+//             let a = 1;
+//             let octaveCount = parseInt(octaveSlider.value);
+//             let finalMultiplier = 0.0;
+//             for (let octave = 0; octave < octaveCount; octave++) {
+//                 let value = a * generators2D[generatorType]["height"].getNoise2D(x * f, y * f);
+//                 finalMultiplier += a;
+//                 total += value;
+//                 a *= 0.5;
+//                 f *= 2;
+//             }
 
-            total *= 1 / finalMultiplier;
+//             total *= 1 / finalMultiplier;
 
-            // altitude sets the upper bound for temperature, inversley proportional
-            // aka higher is colder
-            let altitude = heightGrid[y][x];
-            let maxTemp = 40 - 10 * percentBetween(altitude, 0, 255); // yeah this sucks, should be using constants or variables. whoops.
-            total = mapValue(total, [0, 1], [-10, maxTemp]);
+//             let step = parseInt(thresholdSlider.value);
+//             let rgb = Math.round(total * 255);
+//             // console.log(rgb, rgb % step, rgb - rgb % step)
+//             rgb -= rgb % step;
+//             heights[y].push(rgb);
+//         }
+//     }
+//     return heights;
+// }
 
-            temperatures[y].push(total);
-        }
-    }
-    return temperatures;
-}
+// /**
+//  * generates a temperature map for a give altitude map, using noise values which are then bounded between -10 and a max of 40
+//  * the max temperature is inversely proporitional to temp, with the max height of 255 being -10 to -10
+//  * @param {*} width number of rows
+//  * @param {*} height number of columns
+//  * @param {*} heightGrid grid of equal width and height containing altitudes ranging from 0 and 255
+//  * @re
+//  */
+// function generateTemperatureGrid(width, height, heightGrid) {
+//     let temperatures = [];
+//     let generatorType = generatorSelect.value;
 
-/**
- * generate a very simple grid of noise to act in place of moisture/humidity
- * values on a grid are bounded to 0 and 1, representing 0% and 100% moisture/humidity
- * the temperature dictates the maxmimum moisture, where colder reduced maximum
- *
- * @param {*} width
- * @param {*} height
- * @returns
- */
-function generateMoistureGrid(width, height, temperatures) {
-    let moistures = [];
-    let generatorType = generatorSelect.value;
+//     for (let y = 0; y < width; y++) {
+//         temperatures.push([]);
+//         for (let x = 0; x < height; x++) {
+//             // want temperatures smooth, no octaves
+//             // but what if octaves?
+//             let total = 0.0;
+//             let a = 1;
+//             let octaveCount = parseInt(octaveSlider.value);
+//             let finalMultiplier = 0.0;
+//             let f = parseInt(freqSlider.value) / 100000.0;
+//             for (let octave = 0; octave < octaveCount; octave++) {
+//                 let value = a * generators2D[generatorType]["temp"].getNoise2D(x * f, y * f);
+//                 finalMultiplier += a;
+//                 total += value;
+//                 a *= 0.5;
+//                 f *= 2;
+//             }
 
-    for (let y = 0; y < width; y++) {
-        moistures.push([]);
-        for (let x = 0; x < height; x++) {
-            // want moisture to be smooth, no octaves
-            const temp = temperatures[y][x];
-            const maxMoisture = percentBetween(temp, -10, 40) * 100;
-            let f = parseInt(freqSlider.value) / 100000.0;
+//             total *= 1 / finalMultiplier;
 
-            let total = 0.0;
-            let a = 1;
-            let octaveCount = parseInt(octaveSlider.value);
-            let finalMultiplier = 0.0;
-            for (let octave = 0; octave < octaveCount; octave++) {
-                let value = a * generators2D[generatorType]["moi"].getNoise2D(x * f, y * f);
-                finalMultiplier += a;
-                total += value;
-                a *= 0.5;
-                f *= 2;
-            }
+//             // altitude sets the upper bound for temperature, inversley proportional
+//             // aka higher is colder
+//             let altitude = heightGrid[y][x];
+//             let maxTemp = 40 - 10 * percentBetween(altitude, 0, 255); // yeah this sucks, should be using constants or variables. whoops.
+//             total = mapValue(total, [0, 1], [-10, maxTemp]);
 
-            total *= 1 / finalMultiplier;
+//             temperatures[y].push(total);
+//         }
+//     }
+//     return temperatures;
+// }
 
-            total = mapValue(total, [0, 1], [0, maxMoisture]);
-            moistures[y].push(total);
-        }
-    }
-    return moistures;
-}
+// /**
+//  * generate a very simple grid of noise to act in place of moisture/humidity
+//  * values on a grid are bounded to 0 and 1, representing 0% and 100% moisture/humidity
+//  * the temperature dictates the maxmimum moisture, where colder reduced maximum
+//  *
+//  * @param {*} width
+//  * @param {*} height
+//  * @returns
+//  */
+// function generateMoistureGrid(width, height, temperatures) {
+//     let moistures = [];
+//     let generatorType = generatorSelect.value;
+
+//     for (let y = 0; y < width; y++) {
+//         moistures.push([]);
+//         for (let x = 0; x < height; x++) {
+//             // want moisture to be smooth, no octaves
+//             const temp = temperatures[y][x];
+//             const maxMoisture = percentBetween(temp, -10, 40) * 100;
+//             let f = parseInt(freqSlider.value) / 100000.0;
+
+//             let total = 0.0;
+//             let a = 1;
+//             let octaveCount = parseInt(octaveSlider.value);
+//             let finalMultiplier = 0.0;
+//             for (let octave = 0; octave < octaveCount; octave++) {
+//                 let value = a * generators2D[generatorType]["moi"].getNoise2D(x * f, y * f);
+//                 finalMultiplier += a;
+//                 total += value;
+//                 a *= 0.5;
+//                 f *= 2;
+//             }
+
+//             total *= 1 / finalMultiplier;
+
+//             total = mapValue(total, [0, 1], [0, maxMoisture]);
+//             moistures[y].push(total);
+//         }
+//     }
+//     return moistures;
+// }
 
 const BIOME_COLOURS = {
     snow: "rgb(255, 255, 255)",
@@ -242,15 +282,27 @@ const BIOME_COLOURS = {
 function simulateBiomes(heightGrid) {
     const width = heightGrid[0].length;
     const height = heightGrid.length;
-    let tempGrid = generateTemperatureGrid(width, height, heightGrid);
-    let moiGrid = generateMoistureGrid(width, height, tempGrid);
+
+    let tempGen = generators2D[generatorSelect.value]["temp"]
+    let moiGen = generators2D[generatorSelect.value]["moi"]
+    // TODO: make the alt, temp, and moi bounds constants
+    // let tempGrid = genereateDependentGrid(tempGen, [-10, 40], -10, heightGrid, [0, 255]);
+    let tempGrid = generateGrid(500, 500, tempGen, [-10, 40])
+    let moiGrid = generateDependentGrid(moiGen, [0, 100], 0, tempGrid, [-10, 40]);
 
     console.log(Math.min);
 
     const max = Math.max(...[].concat(...tempGrid));
     const min = Math.min(...[].concat(...tempGrid));
+    let avg = 0;
+    const concattedTemp = [...[].concat(...tempGrid)]
+    concattedTemp.forEach((temp) => {
+        avg += temp
+    })
+    avg /= concattedTemp.length
     console.log(max);
     console.log(min);
+    console.log(avg)
 
     console.log(heightGrid, tempGrid, moiGrid);
 
@@ -368,8 +420,8 @@ function kaleidoscopeMap(heightGrid) {
     const redMap = heightGrid;
     generators2D[generatorType]["temp"].reseed()
     generators2D[generatorType]["moi"].reseed()
-    let greenMap = generateGrid(500, 500, generators2D[generatorType]["temp"])
-    let blueMap = generateGrid(500, 500, generators2D[generatorType]["moi"])
+    let greenMap = generateGrid(500, 500, generators2D[generatorType]["temp"], [0, 255])
+    let blueMap = generateGrid(500, 500, generators2D[generatorType]["moi"], [0, 255])
 
     let rgbMap = [];
     for (let y = 0; y < heightGrid.length; y++) {
@@ -445,7 +497,8 @@ function draw3D() {
     // scene.add( light );
 
     // setup terrain using noise
-    let heights = generateHeightGrid(500, 500); // [y][x] = height from 0 to 255 (step variable from 1 to N W/ N is <= 255)
+    let generator = generators2D[generatorSelect.value]["height"]
+    let heights = generateGrid(500, 500, generator, [0, 255]); // [y][x] = height from 0 to 255 (step variable from 1 to N W/ N is <= 255)
     let terrainGeometry = new THREE.PlaneGeometry(500, 500, 499, 499);
     terrainGeometry.rotateX(-Math.PI / 2);
 
@@ -546,7 +599,8 @@ function draw2D() {
     let canvas = document.getElementsByTagName("canvas")[0].getContext("2d");
     // let freqSlider = document.getElementById("freqSlider").value;
     // let heightSlider = document.getElementById("heightSlider").value;
-    let heights = generateHeightGrid(500, 500);
+    let generator = generators2D[generatorSelect.value]["height"]
+    let heights = generateGrid(500, 500, generator, [0, 255]);
     let rgbMap = heightToRGB(heights);
     for (let y = 0; y < 500; y++) {
         for (let x = 0; x < 500; x++) {

@@ -1,3 +1,5 @@
+import { Permutation } from "./Permutation.js";
+
 const vectors2D = [
     [-1, -1],
     [-1, 1],
@@ -24,34 +26,34 @@ const vectors3D = [
     [0, -1, -1],
 ];
 
-// permutations ranges from 0 to 255, twice for wrapping
-class Permutation {
-    constructor() {
-        this.permutations = [];
-        for (let i = 0; i < 256; i++) {
-            this.permutations.push(i);
-            this.permutations.push(i);
-        }
-        this.shuffle();
-    }
+// // permutations ranges from 0 to 255, twice for wrapping
+// class Permutation {
+//     constructor() {
+//         this.permutations = [];
+//         for (let i = 0; i < 256; i++) {
+//             this.permutations.push(i);
+//             this.permutations.push(i);
+//         }
+//         this.shuffle();
+//     }
 
-    shuffle() {
-        for (let i = 0; i < 512; i++) {
-            let newIndex = Math.floor(Math.random() * 512);
-            let saved = this.permutations[i];
-            this.permutations[i] = this.permutations[newIndex];
-            this.permutations[newIndex] = saved;
-        }
-    }
+//     shuffle() {
+//         for (let i = 0; i < 512; i++) {
+//             let newIndex = Math.floor(Math.random() * 512);
+//             let saved = this.permutations[i];
+//             this.permutations[i] = this.permutations[newIndex];
+//             this.permutations[newIndex] = saved;
+//         }
+//     }
 
-    get(i) {
-        return this.permutations[i];
-    }
+//     get(i) {
+//         return this.permutations[i];
+//     }
 
-    get2(x, y) {
-        return this.permutations[this.permutations[x] + y];
-    }
-}
+//     get2(x, y) {
+//         return this.permutations[this.permutations[x] + y];
+//     }
+// }
 
 function linerInterp(weight, val1, val2) {
     return val1 + weight * (val2 - val1);

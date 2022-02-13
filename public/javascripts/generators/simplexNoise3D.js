@@ -1,4 +1,5 @@
 const { rejects } = require("assert");
+import { Permutation } from "./Permutation.js";
 
 let generator = new SimplexGenerator();
 let canvasContext = document.getElementsByTagName("canvas")[0].getContext("2d");
